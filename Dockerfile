@@ -15,8 +15,11 @@ COPY . .
 # Build the application
 RUN npm run build
 
+# Verify build output
+RUN ls -la dist/
+
 # Expose port
 EXPOSE $PORT
 
-# Start the application using npm start
+# Start the application using Express server
 CMD ["npm", "start"]

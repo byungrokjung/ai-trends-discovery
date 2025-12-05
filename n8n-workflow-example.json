@@ -1,0 +1,152 @@
+{
+  "name": "AI Trends Collector",
+  "description": "RSS 피드에서 AI 트렌드를 수집하여 Supabase에 저장",
+  "nodes": [
+    {
+      "name": "Schedule",
+      "type": "n8n-nodes-base.schedule",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "RSS Feed Reader",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "parameters": {
+        "urls": [
+          "https://techcrunch.com/category/artificial-intelligence/feed/",
+          "https://venturebeat.com/ai/feed/",
+          "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"
+        ]
+      }
+    },
+    {
+      "name": "OpenAI Summary",
+      "type": "n8n-nodes-base.openAi",
+      "parameters": {
+        "operation": "completion",
+        "prompt": "다음 AI 뉴스를 한국어로 3줄 요약하고, 한국 시장에 미칠 영향을 1줄로 설명해주세요:\n\n제목: {{$json[\"title\"]}}\n내용: {{$json[\"description\"]}}\n\n형식:\n요약: (3줄 요약)\n한국 영향: (1줄 설명)"
+      }
+    },
+    {
+      "name": "Transform Data",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "// 데이터 변환\nconst items = [];\n\nfor (const item of $input.all()) {\n  const rssItem = item.json;\n  const summary = item.json.openai_response || '';\n  \n  // 카테고리 추출 또는 분류\n  let category = 'General';\n  const title = rssItem.title.toLowerCase();\n  if (title.includes('gpt') || title.includes('chatgpt')) category = '모델 출시';\n  else if (title.includes('gemini') || title.includes('google')) category = 'AI 에이전트';\n  else if (title.includes('investment') || title.includes('funding')) category = '투자';\n  else if (title.includes('opensource') || title.includes('open source')) category = '오픈소스';\n  \n  // 중요도 계산 (간단한 예시)\n  let importance = 5;\n  if (title.includes('release') || title.includes('launch')) importance = 8;\n  if (title.includes('breakthrough') || title.includes('revolution')) importance = 9;\n  \n  items.push({\n    json: {\n      title: rssItem.title,\n      summary: summary.split('요약:')[1]?.split('한국 영향:')[0]?.trim() || rssItem.description,\n      summary_korean: summary.split('요약:')[1]?.split('한국 영향:')[0]?.trim(),\n      korea_relevance: summary.split('한국 영향:')[1]?.trim(),\n      source: rssItem.source || new URL(rssItem.link).hostname,\n      category: category,\n      published_at: new Date(rssItem.pubDate || rssItem.date).toISOString(),\n      original_url: rssItem.link,\n      importance: importance,\n      tags: rssItem.categories || [],\n      image_url: rssItem.image || rssItem.enclosure?.url\n    }\n  });\n}\n\nreturn items;"
+      }
+    },
+    {
+      "name": "Supabase Insert",
+      "type": "n8n-nodes-base.supabase",
+      "parameters": {
+        "operation": "upsert",
+        "table": "trends",
+        "dataToSend": "defineBelow",
+        "fieldsToSend": {
+          "values": [
+            {
+              "fieldName": "title",
+              "fieldValue": "={{$json[\"title\"]}}"
+            },
+            {
+              "fieldName": "summary",
+              "fieldValue": "={{$json[\"summary\"]}}"
+            },
+            {
+              "fieldName": "summary_korean",
+              "fieldValue": "={{$json[\"summary_korean\"]}}"
+            },
+            {
+              "fieldName": "korea_relevance",
+              "fieldValue": "={{$json[\"korea_relevance\"]}}"
+            },
+            {
+              "fieldName": "source",
+              "fieldValue": "={{$json[\"source\"]}}"
+            },
+            {
+              "fieldName": "category",
+              "fieldValue": "={{$json[\"category\"]}}"
+            },
+            {
+              "fieldName": "published_at",
+              "fieldValue": "={{$json[\"published_at\"]}}"
+            },
+            {
+              "fieldName": "original_url",
+              "fieldValue": "={{$json[\"original_url\"]}}"
+            },
+            {
+              "fieldName": "importance",
+              "fieldValue": "={{$json[\"importance\"]}}"
+            },
+            {
+              "fieldName": "tags",
+              "fieldValue": "={{$json[\"tags\"]}}"
+            },
+            {
+              "fieldName": "image_url",
+              "fieldValue": "={{$json[\"image_url\"]}}"
+            }
+          ]
+        },
+        "options": {
+          "onConflict": "title,source,published_at"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule": {
+      "main": [
+        [
+          {
+            "node": "RSS Feed Reader",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed Reader": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Summary": {
+      "main": [
+        [
+          {
+            "node": "Transform Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform Data": {
+      "main": [
+        [
+          {
+            "node": "Supabase Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

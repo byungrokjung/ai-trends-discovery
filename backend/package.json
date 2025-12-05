@@ -1,0 +1,29 @@
+{
+  "name": "ai-trends-backend",
+  "version": "1.0.0",
+  "description": "AI Trends Platform Backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "telegram-bot": "node telegramBotServer.js",
+    "telegram-bot:dev": "nodemon telegramBotServer.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.61.0",
+    "@supabase/supabase-js": "^2.50.3",
+    "axios": "^1.10.0",
+    "cheerio": "^1.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.1.0",
+    "express": "^4.18.2",
+    "node-cron": "^3.0.3",
+    "openai": "^4.20.0",
+    "rss-parser": "^3.13.0",
+    "node-telegram-bot-api": "^0.65.1",
+    "puppeteer": "^22.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

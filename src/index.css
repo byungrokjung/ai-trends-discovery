@@ -1,0 +1,128 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Noto+Serif+KR:wght@400;500;700&family=Gowun+Batang:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Toast 애니메이션 */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+@layer base {
+  /* 브런치 스타일의 기본 설정 */
+  html {
+    @apply scroll-smooth antialiased;
+  }
+  
+  body {
+    @apply bg-background text-text-primary font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* 선택 영역 스타일 */
+  ::selection {
+    @apply bg-accent/20 text-text-primary;
+  }
+
+  /* 브런치 스타일의 타이포그래피 */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-bold tracking-tight;
+  }
+
+  h1 {
+    @apply text-display lg:text-display-lg;
+  }
+
+  h2 {
+    @apply text-title lg:text-display;
+  }
+
+  h3 {
+    @apply text-2xl;
+  }
+
+  p {
+    @apply text-body-lg text-text-secondary leading-relaxed;
+  }
+
+  /* 링크 스타일 */
+  a {
+    @apply transition-colors duration-200;
+  }
+}
+
+@layer components {
+  /* 브런치 스타일 아티클 카드 */
+  .article-card {
+    @apply bg-background-card border border-border-light transition-all duration-300 hover:shadow-xl cursor-pointer;
+  }
+  
+  /* 이미지 갤러리 호버 효과 */
+  .image-gallery-item {
+    @apply relative overflow-hidden;
+  }
+  
+  .image-gallery-item::after {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300;
+  }
+  
+  .image-gallery-item:hover::after {
+    @apply opacity-100;
+  }
+
+  /* 브런치 스타일 버튼 */
+  .btn-brunch {
+    @apply inline-flex items-center justify-center px-8 py-3 
+           text-sm font-medium rounded-full
+           transition-all duration-300
+           focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply btn-brunch bg-primary text-white
+           hover:bg-primary-hover 
+           focus:ring-primary-accent;
+  }
+
+  .btn-secondary {
+    @apply btn-brunch bg-primary-lighter text-text-secondary
+           hover:bg-primary-light 
+           focus:ring-primary-accent;
+  }
+
+  .btn-ghost {
+    @apply btn-brunch bg-transparent text-text-tertiary
+           hover:bg-primary-lighter hover:text-text-primary;
+  }
+
+  /* 브런치 스타일 태그 */
+  .tag {
+    @apply inline-block px-3 py-1 text-sm text-text-tertiary 
+           bg-primary-lighter rounded-full hover:bg-primary-light
+           transition-colors duration-200;
+  }
+
+  /* 아티클 읽기 시간 */
+  .reading-time {
+    @apply text-small text-text-tertiary;
+  }
+
+  /* 헤더 스크롤 효과 */
+  .header-scrolled {
+    @apply bg-background/95 backdrop-blur-sm border-b border-border-light;
+  }
+}

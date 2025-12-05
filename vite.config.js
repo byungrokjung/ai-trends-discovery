@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => ({
     })
   },
   preview: {
-    host: true,
-    port: process.env.PORT || 4173
+    host: '0.0.0.0',
+    port: parseInt(process.env.PORT) || 4173
   },
   build: {
     outDir: 'dist',

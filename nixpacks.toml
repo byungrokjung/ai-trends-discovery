@@ -1,0 +1,16 @@
+[providers]
+node = "18"
+
+[variables]
+NODE_VERSION = "18"
+NIXPACKS_BUILD_CMD = "npm install && npm run build"
+NIXPACKS_START_CMD = "npm run preview"
+
+[phases.build]
+cmds = ["npm install", "npm run build"]
+
+[phases.start]
+cmd = "npm run preview"
+
+[start]
+cmd = "npm run preview"

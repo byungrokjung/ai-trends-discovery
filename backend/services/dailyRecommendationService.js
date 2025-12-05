@@ -3,7 +3,7 @@ const sourcingService = require('./sourcingService')
 const { selectBalancedTrends } = require('./trendAnalysisService')
 
 /**
- * 매일 50개 상품 추천 생성
+ * 매일 50개 상품 추천 생성 (타오바오/1688 링크 + 검색 태그 포함)
  */
 async function generateDailyRecommendations() {
     try {
@@ -19,38 +19,48 @@ async function generateDailyRecommendations() {
 
         console.log(`📊 ${selectedTrends.length}개 트렌드 선택 완료`)
 
-        // 2. 각 트렌드마다 상품 1개씩 추출
+        // 2. 각 트렌드마다 상품 추천 생성
         const recommendations = []
         const today = new Date().toISOString().split('T')[0]
 
         for (const trend of selectedTrends) {
             try {
-                // GPT 분석
+                // GPT 분석 (중국어 키워드 + 검색 태그 포함)
                 const analysis = await sourcingService.analyzeContent(trend, trend.platform)
 
-                if (analysis && analysis.englishKeyword) {
-                    // 상품 검색 (1개만)
-                    const products = await sourcingService.searchProducts(analysis.englishKeyword, 1)
+                if (analysis && analysis.productName) {
+                    // 상품 정보 생성 (타오바오/1688 링크 포함)
+                    const products = await sourcingService.searchProducts(analysis)
 
                     if (products && products.length > 0) {
+                        const product = products[0]
+
                         recommendations.push({
                             date: today,
                             platform: trend.platform,
                             category: trend.category,
-                            trend_keyword: analysis.productName || trend.text.substring(0, 100),
-                            product_name: products[0].title,
-                            product_url: products[0].contextLink || products[0].link,
-                            thumbnail_url: products[0].thumbnail,
+                            trend_keyword: analysis.productName,
+                            product_name: product.title,
+                            product_url: product.primaryLink, // 1688 기본
+                            thumbnail_url: product.thumbnail,
                             analysis: JSON.stringify({
                                 reason: analysis.reason,
                                 targetAudience: analysis.targetAudience,
-                                sellingPoint: analysis.sellingPoint
+                                sellingPoint: analysis.sellingPoint,
+                                // 새로 추가된 필드들
+                                chineseKeyword: product.chineseKeyword,
+                                englishKeyword: product.englishKeyword,
+                                searchTags: product.searchTags,
+                                estimatedPrice: product.estimatedPrice,
+                                links: product.links // 타오바오, 1688, AliExpress
                             }),
-                            confidence_score: 0.8, // 기본 점수
-                            original_content_id: String(trend.id) // 문자열로 변환
+                            confidence_score: 0.8,
+                            original_content_id: String(trend.id)
                         })
 
                         console.log(`✅ [${trend.category}/${trend.platform}] ${analysis.productName}`)
+                        console.log(`   🇨🇳 중국어: ${product.chineseKeyword}`)
+                        console.log(`   🏷️ 태그: ${product.searchTags.join(', ')}`)
                     }
                 }
             } catch (error) {

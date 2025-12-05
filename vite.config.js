@@ -15,5 +15,14 @@ export default defineConfig(({ mode }) => ({
         }
       }
     })
+  },
+  preview: {
+    host: true,
+    port: process.env.PORT || 4173
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'esbuild'
   }
 }))

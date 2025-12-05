@@ -180,19 +180,48 @@ export default function DailyRecommendations() {
                                     <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 h-12">
                                         {item.product_name}
                                     </h3>
-                                    <p className="text-sm text-gray-600 mb-3 line-clamp-1">
+                                    <p className="text-sm text-gray-600 mb-2 line-clamp-1">
                                         #{item.trend_keyword}
                                     </p>
 
-                                    {/* 분석 정보 */}
-                                    <div className="flex-1 mb-4">
+                                    {/* 분석 정보 + 검색 태그 */}
+                                    <div className="flex-1 mb-3">
                                         {item.analysis && (() => {
                                             try {
                                                 const analysis = JSON.parse(item.analysis)
                                                 return (
-                                                    <div className="text-xs text-gray-500 space-y-1 bg-gray-50 p-2 rounded">
+                                                    <div className="text-xs space-y-2">
+                                                        {/* 추천 이유 */}
                                                         {analysis.reason && (
-                                                            <p className="line-clamp-2">💡 {analysis.reason}</p>
+                                                            <p className="text-gray-500 line-clamp-2 bg-gray-50 p-2 rounded">
+                                                                💡 {analysis.reason}
+                                                            </p>
+                                                        )}
+
+                                                        {/* 중국어 키워드 */}
+                                                        {analysis.chineseKeyword && (
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="text-red-500">🇨🇳</span>
+                                                                <span className="text-gray-700 font-medium">{analysis.chineseKeyword}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* 검색 태그 */}
+                                                        {analysis.searchTags && analysis.searchTags.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {analysis.searchTags.slice(0, 3).map((tag, idx) => (
+                                                                    <span key={idx} className="bg-blue-50 text-blue-600 text-[10px] px-1.5 py-0.5 rounded">
+                                                                        #{tag}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {/* 예상 가격 */}
+                                                        {analysis.estimatedPrice && (
+                                                            <div className="text-orange-600 font-medium">
+                                                                💰 약 ¥{analysis.estimatedPrice}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 )
@@ -202,22 +231,64 @@ export default function DailyRecommendations() {
                                         })()}
                                     </div>
 
-                                    {/* 버튼 그룹 */}
-                                    <div className="flex gap-2 mt-4 pt-2 border-t border-gray-100">
-                                        <a
-                                            href={item.product_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex-1 text-center bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center"
-                                        >
-                                            구매 링크
-                                        </a>
+                                    {/* 버튼 그룹 - 타오바오/1688 */}
+                                    <div className="space-y-2 pt-2 border-t border-gray-100">
+                                        {/* 링크 버튼들 */}
+                                        {item.analysis && (() => {
+                                            try {
+                                                const analysis = JSON.parse(item.analysis)
+                                                if (analysis.links) {
+                                                    return (
+                                                        <div className="grid grid-cols-3 gap-1">
+                                                            <a
+                                                                href={analysis.links.alibaba1688}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-center bg-orange-500 text-white py-1.5 rounded text-xs font-medium hover:bg-orange-600"
+                                                            >
+                                                                1688
+                                                            </a>
+                                                            <a
+                                                                href={analysis.links.taobao}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-center bg-red-500 text-white py-1.5 rounded text-xs font-medium hover:bg-red-600"
+                                                            >
+                                                                타오바오
+                                                            </a>
+                                                            <a
+                                                                href={analysis.links.aliexpress}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-center bg-gray-600 text-white py-1.5 rounded text-xs font-medium hover:bg-gray-700"
+                                                            >
+                                                                Ali
+                                                            </a>
+                                                        </div>
+                                                    )
+                                                }
+                                            } catch { return null }
+                                        })()}
+
+                                        {/* 기본 링크 (구버전 데이터용) */}
+                                        {!item.analysis?.includes('links') && (
+                                            <a
+                                                href={item.product_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block w-full text-center bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
+                                            >
+                                                구매 링크
+                                            </a>
+                                        )}
+
+                                        {/* 유사 상품 버튼 */}
                                         <button
                                             onClick={() => handleFindSimilar(item)}
-                                            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors border border-gray-200 flex items-center justify-center"
-                                            title="비슷한 상품 찾기"
+                                            className="w-full py-1.5 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 flex items-center justify-center gap-1"
                                         >
-                                            <TrendingUp className="w-5 h-5" />
+                                            <TrendingUp className="w-3 h-3" />
+                                            비슷한 트렌드 보기
                                         </button>
                                     </div>
                                 </div>

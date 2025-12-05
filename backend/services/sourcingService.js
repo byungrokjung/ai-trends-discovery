@@ -49,7 +49,7 @@ class SourcingService {
         }
     }
 
-    // 2. GPT로 트렌드 분석 및 키워드 추출
+    // 2. GPT로 트렌드 분석 및 키워드 추출 (타오바오/1688용 중국어 키워드 포함)
     async analyzeContent(content, platform) {
         try {
             const text = platform === 'instagram'
@@ -65,17 +65,20 @@ class SourcingService {
         다음 형식의 JSON으로만 응답해주세요:
         {
           "productName": "핵심 상품명 (한국어)",
-          "englishKeyword": "Aliexpress 검색용 영어 키워드 (2~3단어)",
+          "englishKeyword": "영어 검색 키워드 (2~3단어)",
+          "chineseKeyword": "중국어 검색 키워드 (타오바오/1688 검색용, 2~3단어)",
+          "searchTags": ["검색태그1", "검색태그2", "검색태그3"],
           "reason": "이 상품이 인기 있는 이유 (1문장)",
           "targetAudience": "타겟 고객층",
-          "sellingPoint": "판매 소구점"
+          "sellingPoint": "판매 소구점",
+          "estimatedPrice": "예상 중국 도매가 (위안 단위, 숫자만)"
         }
       `;
 
             const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini", // 가성비 모델 사용
+                model: "gpt-4o-mini",
                 messages: [
-                    { role: "system", content: "당신은 전문 MD이자 소싱 전문가입니다. JSON 형식으로만 응답하세요." },
+                    { role: "system", content: "당신은 전문 MD이자 중국 소싱 전문가입니다. 타오바오/1688에서 검색 가능한 정확한 중국어 키워드를 제공해주세요. JSON 형식으로만 응답하세요." },
                     { role: "user", content: prompt }
                 ],
                 response_format: { type: "json_object" }
@@ -88,72 +91,90 @@ class SourcingService {
         }
     }
 
-    // 3. 상품 검색 (Google Custom Search API -> AliExpress)
-    async searchProducts(keyword) {
-        // API 키가 없으면 모의 데이터 반환
-        if (!this.googleApiKey || !this.googleCx) {
-            console.log('⚠️ Google Search API 키가 없습니다. 모의 데이터를 반환합니다.');
-            return this.getMockProducts(keyword);
-        }
+    // 3. 타오바오/1688 검색 URL 생성
+    generateSearchUrls(chineseKeyword, englishKeyword) {
+        const encodedChinese = encodeURIComponent(chineseKeyword || englishKeyword);
+        const encodedEnglish = encodeURIComponent(englishKeyword);
 
-        try {
-            const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
-                params: {
-                    key: this.googleApiKey,
-                    cx: this.googleCx,
-                    q: `${keyword} site:aliexpress.com`,
-                    num: 3,
-                    searchType: 'image' // 이미지 검색 결과가 상품 매칭에 유리
+        return {
+            taobao: `https://s.taobao.com/search?q=${encodedChinese}`,
+            alibaba1688: `https://s.1688.com/selloffer/offer_search.htm?keywords=${encodedChinese}`,
+            aliexpress: `https://www.aliexpress.com/wholesale?SearchText=${encodedEnglish}`
+        };
+    }
+
+    // 4. 상품 정보 생성 (타오바오/1688 링크 포함)
+    async searchProducts(analysis) {
+        const keyword = analysis.englishKeyword || 'product';
+        const chineseKeyword = analysis.chineseKeyword || keyword;
+        const searchTags = analysis.searchTags || [];
+
+        // 검색 URL 생성
+        const urls = this.generateSearchUrls(chineseKeyword, keyword);
+
+        // Google API로 썸네일 이미지 가져오기 (있으면)
+        let thumbnail = 'https://placehold.co/300x300?text=Product';
+
+        if (this.googleApiKey && this.googleCx) {
+            try {
+                const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+                    params: {
+                        key: this.googleApiKey,
+                        cx: this.googleCx,
+                        q: `${keyword}`,
+                        num: 1,
+                        searchType: 'image'
+                    }
+                });
+                if (response.data.items && response.data.items[0]) {
+                    thumbnail = response.data.items[0].link;
                 }
-            });
-
-            if (!response.data.items) return [];
-
-            return response.data.items.map(item => ({
-                title: item.title,
-                link: item.link, // 이미지 링크
-                contextLink: item.image.contextLink, // 실제 상품 페이지
-                thumbnail: item.image.thumbnailLink,
-                price: '가격 정보 확인 필요' // Google Image Search는 가격을 직접 주지 않음
-            }));
-
-        } catch (error) {
-            console.error('❌ Google 검색 실패:', error.message);
-            return this.getMockProducts(keyword);
+            } catch (error) {
+                console.log('⚠️ 이미지 검색 실패, 기본 이미지 사용');
+            }
         }
+
+        return [{
+            title: analysis.productName,
+            thumbnail: thumbnail,
+            links: {
+                taobao: urls.taobao,
+                alibaba1688: urls.alibaba1688,
+                aliexpress: urls.aliexpress
+            },
+            primaryLink: urls.alibaba1688, // 1688을 기본으로
+            chineseKeyword: chineseKeyword,
+            englishKeyword: keyword,
+            searchTags: searchTags,
+            estimatedPrice: analysis.estimatedPrice || '확인필요'
+        }];
     }
 
     getMockProducts(keyword) {
-        return [
-            {
-                title: `[Mock] ${keyword} - High Quality`,
-                link: 'https://via.placeholder.com/300',
-                contextLink: 'https://aliexpress.com',
-                thumbnail: 'https://via.placeholder.com/150',
-                price: '$12.99'
-            },
-            {
-                title: `[Mock] Best ${keyword} 2024`,
-                link: 'https://via.placeholder.com/300',
-                contextLink: 'https://aliexpress.com',
-                thumbnail: 'https://via.placeholder.com/150',
-                price: '$9.50'
-            }
-        ];
+        const urls = this.generateSearchUrls(keyword, keyword);
+        return [{
+            title: `[Mock] ${keyword}`,
+            thumbnail: 'https://placehold.co/300x300?text=Mock',
+            links: urls,
+            primaryLink: urls.alibaba1688,
+            chineseKeyword: keyword,
+            englishKeyword: keyword,
+            searchTags: ['mock', 'test'],
+            estimatedPrice: '10'
+        }];
     }
 
-    // 4. 전체 파이프라인 실행 (벡터 검색 활용)
+    // 5. 전체 파이프라인 실행 (벡터 검색 활용)
     async processSourcingPipeline(options = {}) {
         const {
-            useVectorSearch = true,  // 벡터 검색 다시 활성화 ✅
-            searchQuery = '인기 트렌드 상품',  // 벡터 검색 쿼리
-            limit = 5  // 플랫폼별 상위 N개
+            useVectorSearch = true,
+            searchQuery = '인기 트렌드 상품',
+            limit = 5
         } = options;
 
         console.log('🚀 AI 소싱 파이프라인 시작...');
         console.log(`📊 벡터 검색: ${useVectorSearch ? 'ON (의미론적 유사도)' : 'OFF (좋아요 순)'}`);
 
-        // 벡터 검색 또는 기본 방식으로 콘텐츠 가져오기
         const contents = await this.getViralContents(limit, useVectorSearch, searchQuery);
         const results = [];
 
@@ -164,14 +185,14 @@ class SourcingService {
             console.log(`🔍 Instagram 분석 중: ${post.caption?.substring(0, 50)}...`);
             const analysis = await this.analyzeContent(post, 'instagram');
             if (analysis) {
-                const products = await this.searchProducts(analysis.englishKeyword);
+                const products = await this.searchProducts(analysis);
                 results.push({
                     type: 'instagram',
                     originalContent: post,
                     analysis,
                     sourcingProducts: products
                 });
-                console.log(`✅ 상품 매칭 완료: ${analysis.productName} → ${products.length}개 상품`);
+                console.log(`✅ 상품 매칭 완료: ${analysis.productName} (🇨🇳 ${analysis.chineseKeyword})`);
             }
         }
 
@@ -180,20 +201,18 @@ class SourcingService {
             console.log(`🔍 TikTok 분석 중: ${content.description?.substring(0, 50)}...`);
             const analysis = await this.analyzeContent(content, 'tiktok');
             if (analysis) {
-                const products = await this.searchProducts(analysis.englishKeyword);
+                const products = await this.searchProducts(analysis);
                 results.push({
                     type: 'tiktok',
                     originalContent: content,
                     analysis,
                     sourcingProducts: products
                 });
-                console.log(`✅ 상품 매칭 완료: ${analysis.productName} → ${products.length}개 상품`);
+                console.log(`✅ 상품 매칭 완료: ${analysis.productName} (🇨🇳 ${analysis.chineseKeyword})`);
             }
         }
 
         console.log(`✅ 파이프라인 완료: ${results.length}개 아이템 분석됨`);
-        console.log(`📊 벡터 검색 사용: ${useVectorSearch ? 'YES' : 'NO'}`);
-
         return results;
     }
 }

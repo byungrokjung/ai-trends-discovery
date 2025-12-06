@@ -20,9 +20,6 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// 정적 파일 서빙 (프론트엔드 빌드 파일)
-app.use(express.static(path.join(__dirname, '../dist')));
-
 // 환경변수 상태 로깅
 console.log('🔧 환경변수 상태:');
 console.log('- PORT:', process.env.PORT || '5000');
@@ -31,7 +28,7 @@ console.log('- OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '✅ 설정됨' : 
 console.log('- ANTHROPIC_API_KEY:', process.env.ANTHROPIC_API_KEY ? '✅ 설정됨' : '❌ 없음');
 console.log('- NODE_ENV:', process.env.NODE_ENV || 'development');
 
-// Routes
+// API Routes (정적 파일보다 먼저!)
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/trends', require('./routes/trends'));
 app.use('/api/analysis', require('./routes/analysis'));
@@ -57,7 +54,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Catch all handler - SPA용
+// 정적 파일 서빙 (프론트엔드 빌드 파일) - API 라우트 뒤에 위치!
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Catch all handler - SPA용 (맨 마지막!)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
